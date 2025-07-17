@@ -13,21 +13,41 @@ const io = new Server(server, {
 
 // In-memory user location storage
 const users = {};
+const socketToUserId = {};
+const userIdToSocket = {};
 
 io.on('connection', (socket) => {
-  socket.on('location', (coords) => {
-    users[socket.id] = { id: socket.id, coords };
-    // Only send users within 2km of this user
-    const filtered = Object.values(users).filter((u) => {
-      if (!coords || !u.coords) return false;
-      const dist = getDistance(coords, u.coords);
-      return dist < 2000;
-    });
-    io.emit('users', filtered);
+  socket.on('location', (data) => {
+    // data: { id, latitude, longitude }
+    if (!data || typeof data.latitude !== 'number' || typeof data.longitude !== 'number' || !data.id) return;
+    users[data.id] = { id: data.id, coords: { latitude: data.latitude, longitude: data.longitude } };
+    socketToUserId[socket.id] = data.id;
+    userIdToSocket[data.id] = socket.id;
+    console.log('userIdToSocket after location:', userIdToSocket);
+    // Emit all users for debugging
+    io.emit('users', Object.values(users));
+  });
+
+  // Handle wave events
+  socket.on('wave', ({ from, to }) => {
+    console.log(`Received wave from ${from} to ${to}`);
+    console.log('userIdToSocket at wave:', userIdToSocket);
+    if (userIdToSocket[to]) {
+      const targetSocketId = userIdToSocket[to];
+      console.log(`Sending wave_notification to socket ${targetSocketId} for user ${to}`);
+      io.to(targetSocketId).emit('wave_notification', { from });
+    } else {
+      console.log(`No socket found for user ${to}`);
+    }
   });
 
   socket.on('disconnect', () => {
-    delete users[socket.id];
+    const userId = socketToUserId[socket.id];
+    if (userId) {
+      delete users[userId];
+      delete socketToUserId[socket.id];
+      delete userIdToSocket[userId];
+    }
     io.emit('users', Object.values(users));
   });
 });
@@ -49,4 +69,4 @@ function getDistance(a, b) {
     Math.sin(dLat / 2) ** 2 +
     Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(aVal), Math.sqrt(1 - aVal));
-} 
+}
