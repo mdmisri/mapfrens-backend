@@ -24,8 +24,14 @@ io.on('connection', (socket) => {
     socketToUserId[socket.id] = data.id;
     userIdToSocket[data.id] = socket.id;
     console.log('userIdToSocket after location:', userIdToSocket);
-    // Emit all users for debugging
-    io.emit('users', Object.values(users));
+    // Only send users within 2km of this user
+    const currentUser = users[data.id];
+    const filtered = Object.values(users).filter((u) => {
+      if (!currentUser || !u.coords) return false;
+      const dist = getDistance(currentUser.coords, u.coords);
+      return dist < 2000;
+    });
+    io.to(socket.id).emit('users', filtered);
   });
 
   // Handle wave events
