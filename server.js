@@ -24,8 +24,6 @@ const io = new Server(server, {
 
 // Store connected users and their locations in memory
 const connectedUsers = new Map();
-// In-memory message store: { userIdPair: [ { from, to, text, timestamp, seen } ] }
-const messages = {};
 
 app.use(helmet({
   crossOriginEmbedderPolicy: false,
@@ -70,7 +68,7 @@ app.get('/health', (req, res) => {
 
 app.get('/', (req, res) => {
   res.json({
-    message: 'MapFrens Lite - Real-time Location Sharing + Messaging',
+    message: 'MapFrens Lite - Real-time Location Sharing',
     version: '2.0.0',
     connectedUsers: connectedUsers.size,
     endpoints: {
@@ -122,40 +120,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Messaging: send_message { to, text }
-  socket.on('send_message', ({ to, text }) => {
-    const from = socket.id;
-    const timestamp = new Date().toISOString();
-    const userPair = [from, to].sort().join('-');
-    if (!messages[userPair]) messages[userPair] = [];
-    const msg = { from, to, text, timestamp, seen: false };
-    messages[userPair].push(msg);
-    io.to(to).emit('receive_message', msg);
-    socket.emit('receive_message', msg);
-  });
-
-  // Messaging: typing { to }
-  socket.on('typing', ({ to }) => {
-    io.to(to).emit('typing', { from: socket.id });
-  });
-
-  // Messaging: seen { with }
-  socket.on('seen', ({ with: otherId }) => {
-    const userPair = [socket.id, otherId].sort().join('-');
-    if (messages[userPair]) {
-      messages[userPair].forEach(msg => {
-        if (msg.to === socket.id) msg.seen = true;
-      });
-    }
-    io.to(otherId).emit('seen', { by: socket.id });
-  });
-
-  // Messaging: get_messages { with }
-  socket.on('get_messages', ({ with: otherId }) => {
-    const userPair = [socket.id, otherId].sort().join('-');
-    socket.emit('messages_history', messages[userPair] || []);
-  });
-
   // Handle disconnection
   socket.on('disconnect', () => {
     const user = connectedUsers.get(socket.id);
@@ -184,5 +148,5 @@ app.use((req, res) => {
 server.listen(PORT, HOST, () => {
   console.log(`🚀 MapFrens Lite server running on ${HOST}:${PORT}`);
   console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log('🔌 Socket.IO enabled for real-time location sharing + messaging');
+  console.log('🔌 Socket.IO enabled for real-time location sharing');
 });
