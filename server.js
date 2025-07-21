@@ -120,6 +120,12 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Handle wave events
+  socket.on('wave', ({ from, to }) => {
+    // Send wave_notification to the target user (by socket ID)
+    io.to(to).emit('wave_notification', { from });
+  });
+
   // Handle disconnection
   socket.on('disconnect', () => {
     const user = connectedUsers.get(socket.id);
