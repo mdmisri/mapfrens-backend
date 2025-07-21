@@ -122,8 +122,10 @@ io.on('connection', (socket) => {
 
   // Handle wave events
   socket.on('wave', ({ from, to }) => {
-    const fromUser = connectedUsers.get(from);
-    io.to(to).emit('wave_notification', { from: fromUser?.shortId || from });
+    // Use a short, friendly label for the wave popup
+    const friendlyNames = ['A Friend', '👾', '🚀', '🌟', '🎉', '🦄', '😎', '🤖', '🧑‍💻', '🎈'];
+    const randomName = friendlyNames[Math.floor(Math.random() * friendlyNames.length)];
+    io.to(to).emit('wave_notification', { from: randomName });
   });
 
   // Handle disconnection
